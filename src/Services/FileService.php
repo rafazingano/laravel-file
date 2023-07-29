@@ -2,6 +2,7 @@
 
 namespace ConfrariaWeb\File\Services;
 
+use ConfrariaWeb\File\Models\File;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
@@ -51,8 +52,29 @@ class FileService
             return $filePaths;
         } elseif ($fileData instanceof Request) {
             // Se for um Request, pegamos o arquivo através do input
-            $file = $fileData->file($inputName);
-            return $this->storeUploadedFile($file, $storagePath);
+            //$file = $fileData->file($inputName);
+
+            // Se for um Request, pegamos o(s) arquivo(s) através do input
+            $files = $fileData->file($inputName);
+            // Verifica se foi retornado um arquivo ou um array de arquivos válidos
+            if (is_array($files)) {
+                $filePaths = [];
+                foreach ($files as $file) {
+                    if ($file instanceof UploadedFile) {
+                        $filePaths[] = $this->storeUploadedFile($file, $storagePath);
+                    } else {
+                        throw new FileException('Arquivo inválido no input do request.');
+                    }
+                }
+                return $filePaths;
+            } elseif ($files instanceof UploadedFile) {
+                return $this->storeUploadedFile($files, $storagePath);
+            } else {
+                throw new FileException('Arquivo inválido no input do request.');
+            }
+
+            //dd($file);
+            //return $this->storeUploadedFile($file, $storagePath);
         } elseif (is_string($fileData)) {
             // Se for uma URL válida, fazemos o download do arquivo
             if ($this->isValidUrl($fileData)) {
@@ -83,6 +105,13 @@ class FileService
         // Salva o arquivo no storage
         $filePath = $file->storeAs($storagePath, $fileName);
 
+        $this->storeFileModel($file, $filePath);
+
+        return $filePath;
+    }
+
+    protected function storeFileModel($file, $filePath)
+    {
         // Se um modelo foi fornecido, armazena as informações no banco
         if ($this->model instanceof \Illuminate\Database\Eloquent\Model) {
             $fileModel = new File([
@@ -99,9 +128,7 @@ class FileService
         }
 
         // Limpa os valores após salvar o arquivo
-        $this->resetModelData();
-
-        return $filePath;
+        //$this->resetModelData();
     }
 
     /**
