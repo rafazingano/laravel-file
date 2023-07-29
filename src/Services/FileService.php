@@ -75,6 +75,10 @@ class FileService
 
             //dd($file);
             //return $this->storeUploadedFile($file, $storagePath);
+
+            return $filePaths;
+        } elseif ($fileData instanceof UploadedFile) {
+            return $this->storeUploadedFile($fileData, $storagePath);
         } elseif (is_string($fileData)) {
             // Se for uma URL válida, fazemos o download do arquivo
             if ($this->isValidUrl($fileData)) {
